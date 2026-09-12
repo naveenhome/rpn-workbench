@@ -1,0 +1,28 @@
+@model List<Calculation>
+@{ ViewData["Title"] = "History"; }
+
+<h1>History</h1>
+
+@if (!Model.Any())
+{
+    <p>Nothing yet. <a asp-controller="Calculator" asp-action="Index">Work something out.</a></p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr><th>Expression</th><th>Result</th><th>When</th><th></th></tr>
+        </thead>
+        <tbody>
+        @foreach (var calculation in Model)
+        {
+            <tr>
+                <td><code>@calculation.Expression</code></td>
+                <td>@calculation.Result</td>
+                <td>@calculation.EvaluatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                <td><a asp-action="Details" asp-route-id="@calculation.Id">Open</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

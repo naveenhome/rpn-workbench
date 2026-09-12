@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - RPN Workbench</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header>
+        <nav>
+            <a class="brand" asp-controller="Home" asp-action="Index">RPN Workbench</a>
+            <a asp-controller="Calculator" asp-action="Index">Calculator</a>
+            <a asp-controller="History" asp-action="Index">History</a>
+            <partial name="_LoginPartial" />
+        </nav>
+    </header>
+    <main>
+        @RenderBody()
+    </main>
+    <footer>
+        <span>RPN Workbench</span>
+        <a href="https://github.com/agilemania/rpn-workbench/blob/main/SPEC.md">Specification</a>
+    </footer>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

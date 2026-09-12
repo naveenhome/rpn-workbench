@@ -1,0 +1,12 @@
+@model Calculation
+@{ ViewData["Title"] = "Calculation"; }
+
+<h1>Calculation</h1>
+
+<dl>
+    <dt>Expression</dt><dd><code>@Model.Expression</code></dd>
+    <dt>Result</dt><dd>@Model.Result</dd>
+    <dt>Evaluated</dt><dd>@Model.EvaluatedAt.ToString("u")</dd>
+</dl>
+
+<p><a asp-action="Index">Back to history</a></p>

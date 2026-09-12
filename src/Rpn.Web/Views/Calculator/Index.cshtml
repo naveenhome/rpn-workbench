@@ -1,0 +1,23 @@
+@model CalculatorViewModel
+@{ ViewData["Title"] = "Calculator"; }
+
+<h1>Calculator</h1>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <label for="Expression">Expression</label>
+    <input id="Expression" name="Expression" value="@Model.Expression"
+           placeholder="3 4 +" autocomplete="off" autofocus />
+    <button type="submit">Evaluate</button>
+</form>
+
+@if (Model.Error is not null)
+{
+    <p class="error">@Model.Error</p>
+}
+else if (Model.Result is not null)
+{
+    <p class="result"><span>=</span> @Model.Result</p>
+}
+
+<p class="hint">Operators available: @string.Join(" ", Model.Symbols)</p>
