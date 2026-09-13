@@ -9,6 +9,7 @@ keeps a per-user history of them.
 ## Getting started
 
 ```bash
+git clone https://github.com/naveenhome/rpn-workbench.git
 cd rpn-workbench
 dotnet restore
 dotnet run --project src/Rpn.Web
