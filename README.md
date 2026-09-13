@@ -16,9 +16,6 @@ dotnet restore
 dotnet run --project src/Rpn.Web
 ```
 
-The app uses a local SQLite database file (`rpn.db`), created automatically on
-first run — no separate database service is required.
-
 Then open <http://localhost:5080>, sign up, and try `3 4 +`.
 
 To run the tests:
