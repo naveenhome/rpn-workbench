@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- So "dotnet test" picks the browser settings up without
+         anybody having to remember --settings. -->
+    <RunSettingsFilePath>$(MSBuildProjectDirectory)\.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>

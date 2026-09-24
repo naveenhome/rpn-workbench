@@ -1,0 +1,396 @@
+From 2b72ea023cd6ebe41977029e47558c5598795696 Mon Sep 17 00:00:00 2001
+From: Agilemania Course <naveen@agilemania.com>
+Date: Thu, 24 Sep 2026 05:52:24 +0000
+Subject: [PATCH 1/2] Add integration and UI test projects for the course
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The three-day course teaches the test pyramid, so the repository needs a level
+for each. It had only unit tests, and they referenced Rpn.Core alone.
+
+  · Rpn.IntegrationTests hosts the real app through WebApplicationFactory
+    against an in-memory SQLite database
+  · Rpn.UiTests drives a browser with Playwright, in MSTest because Playwright
+    ships no xUnit base class
+  · Program is now a public partial class so the factory can name it
+  · two accounts are seeded in development, so an exercise needing a second
+    signed-in user does not start with twenty manual registrations
+
+None of the nine planted defects is touched. Both new projects carry only
+smoke tests: what they are for is written during the labs.
+
+Not compiled. No .NET SDK was reachable from the environment that wrote this.
+---
+ RpnWorkbench.sln                              | 12 +++++
+ src/Rpn.Web/Program.cs                        | 28 +++++++++++
+ .../CalculatorPageTests.cs                    | 43 ++++++++++++++++
+ .../Rpn.IntegrationTests.csproj               | 26 ++++++++++
+ tests/Rpn.IntegrationTests/WebAppFixture.cs   | 49 +++++++++++++++++++
+ tests/Rpn.UiTests/AppPageTest.cs              | 49 +++++++++++++++++++
+ tests/Rpn.UiTests/Rpn.UiTests.csproj          | 20 ++++++++
+ tests/Rpn.UiTests/SmokeTests.cs               | 33 +++++++++++++
+ 8 files changed, 260 insertions(+)
+ create mode 100644 tests/Rpn.IntegrationTests/CalculatorPageTests.cs
+ create mode 100644 tests/Rpn.IntegrationTests/Rpn.IntegrationTests.csproj
+ create mode 100644 tests/Rpn.IntegrationTests/WebAppFixture.cs
+ create mode 100644 tests/Rpn.UiTests/AppPageTest.cs
+ create mode 100644 tests/Rpn.UiTests/Rpn.UiTests.csproj
+ create mode 100644 tests/Rpn.UiTests/SmokeTests.cs
+
+diff --git a/RpnWorkbench.sln b/RpnWorkbench.sln
+index 110e8d0..dc8ad86 100644
+--- a/RpnWorkbench.sln
++++ b/RpnWorkbench.sln
+@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rpn.Web", "src\Rpn.Web\Rpn.
+ EndProject
+ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rpn.Tests", "tests\Rpn.Tests\Rpn.Tests.csproj", "{44444444-4444-4444-4444-444444444444}"
+ EndProject
++Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rpn.IntegrationTests", "tests\Rpn.IntegrationTests\Rpn.IntegrationTests.csproj", "{55555555-5555-5555-5555-555555555555}"
++EndProject
++Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rpn.UiTests", "tests\Rpn.UiTests\Rpn.UiTests.csproj", "{66666666-6666-6666-6666-666666666666}"
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+@@ -29,5 +33,13 @@ Global
+ 		{44444444-4444-4444-4444-444444444444}.Debug|Any CPU.Build.0 = Debug|Any CPU
+ 		{44444444-4444-4444-4444-444444444444}.Release|Any CPU.ActiveCfg = Release|Any CPU
+ 		{44444444-4444-4444-4444-444444444444}.Release|Any CPU.Build.0 = Release|Any CPU
++		{55555555-5555-5555-5555-555555555555}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{55555555-5555-5555-5555-555555555555}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{55555555-5555-5555-5555-555555555555}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{55555555-5555-5555-5555-555555555555}.Release|Any CPU.Build.0 = Release|Any CPU
++		{66666666-6666-6666-6666-666666666666}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
++		{66666666-6666-6666-6666-666666666666}.Debug|Any CPU.Build.0 = Debug|Any CPU
++		{66666666-6666-6666-6666-666666666666}.Release|Any CPU.ActiveCfg = Release|Any CPU
++		{66666666-6666-6666-6666-666666666666}.Release|Any CPU.Build.0 = Release|Any CPU
+ 	EndGlobalSection
+ EndGlobal
+diff --git a/src/Rpn.Web/Program.cs b/src/Rpn.Web/Program.cs
+index 27ece75..7128222 100644
+--- a/src/Rpn.Web/Program.cs
++++ b/src/Rpn.Web/Program.cs
+@@ -31,6 +31,27 @@ using (var scope = app.Services.CreateScope())
+ {
+     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+     context.Database.EnsureCreated();
++
++    // Two known accounts, in development only, so the history views have more
++    // than one owner to look at. A course exercise that needs two signed-in
++    // users should not begin with ten pairs registering twenty accounts by
++    // hand through the Identity UI.
++    if (app.Environment.IsDevelopment())
++    {
++        var users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
++        foreach (var email in new[] { "alice@example.com", "bob@example.com" })
++        {
++            if (await users.FindByEmailAsync(email) is not null) continue;
++            var user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
++            var result = await users.CreateAsync(user, "Workshop123!");
++            if (!result.Succeeded)
++            {
++                throw new InvalidOperationException(
++                    $"could not seed {email}: "
++                    + string.Join("; ", result.Errors.Select(e => e.Description)));
++            }
++        }
++    }
+ }
+ 
+ if (!app.Environment.IsDevelopment())
+@@ -51,3 +72,10 @@ app.MapControllerRoute(
+ app.MapRazorPages();
+ 
+ app.Run();
++
++/// <summary>
++/// Exposed so the integration tests can host this application in memory.
++/// Top-level statements compile to an internal Program, which
++/// WebApplicationFactory&lt;Program&gt; cannot reach.
++/// </summary>
++public partial class Program { }
+diff --git a/tests/Rpn.IntegrationTests/CalculatorPageTests.cs b/tests/Rpn.IntegrationTests/CalculatorPageTests.cs
+new file mode 100644
+index 0000000..22d01ba
+--- /dev/null
++++ b/tests/Rpn.IntegrationTests/CalculatorPageTests.cs
+@@ -0,0 +1,43 @@
++using System.Net;
++
++namespace Rpn.IntegrationTests;
++
++/// <summary>
++/// A smoke test, so the project is green before anybody writes anything in it.
++///
++/// It is deliberately thin. What belongs at this level is behaviour that spans
++/// more than one class but stops short of a browser: routing, model binding,
++/// filters, and whether two components that are supposed to agree actually do.
++/// </summary>
++public class CalculatorPageTests : IClassFixture<WebAppFixture>
++{
++    private readonly WebAppFixture _app;
++
++    public CalculatorPageTests(WebAppFixture app) => _app = app;
++
++    [Fact]
++    public async Task Home_page_is_served()
++    {
++        var client = _app.CreateClient();
++
++        var response = await client.GetAsync("/");
++
++        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
++    }
++
++    [Fact]
++    public async Task History_requires_a_signed_in_user()
++    {
++        // Redirects to the login page rather than serving the list. Following
++        // the redirect is off so the test asserts the redirect itself.
++        var client = _app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
++        {
++            AllowAutoRedirect = false,
++        });
++
++        var response = await client.GetAsync("/History");
++
++        Assert.Equal(HttpStatusCode.Found, response.StatusCode);
++        Assert.Contains("/Identity/Account/Login", response.Headers.Location?.OriginalString ?? "");
++    }
++}
+diff --git a/tests/Rpn.IntegrationTests/Rpn.IntegrationTests.csproj b/tests/Rpn.IntegrationTests/Rpn.IntegrationTests.csproj
+new file mode 100644
+index 0000000..28493f4
+--- /dev/null
++++ b/tests/Rpn.IntegrationTests/Rpn.IntegrationTests.csproj
+@@ -0,0 +1,26 @@
++<Project Sdk="Microsoft.NET.Sdk">
++
++  <PropertyGroup>
++    <TargetFramework>net9.0</TargetFramework>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <Nullable>enable</Nullable>
++    <IsPackable>false</IsPackable>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
++    <!-- WebApplicationFactory: hosts the real application in memory, with the
++         real routing, the real filters and the real dependency graph. -->
++    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
++    <!-- Flows in transitively through Rpn.Data, but the fixture names it
++         directly, so it is referenced directly. -->
++    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
++    <PackageReference Include="xunit" Version="2.9.2" />
++    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\..\src\Rpn.Web\Rpn.Web.csproj" />
++  </ItemGroup>
++
++</Project>
+diff --git a/tests/Rpn.IntegrationTests/WebAppFixture.cs b/tests/Rpn.IntegrationTests/WebAppFixture.cs
+new file mode 100644
+index 0000000..5729f74
+--- /dev/null
++++ b/tests/Rpn.IntegrationTests/WebAppFixture.cs
+@@ -0,0 +1,49 @@
++using System.Data.Common;
++using Microsoft.AspNetCore.Hosting;
++using Microsoft.AspNetCore.Mvc.Testing;
++using Microsoft.Data.Sqlite;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.DependencyInjection;
++using Rpn.Data;
++
++namespace Rpn.IntegrationTests;
++
++/// <summary>
++/// Hosts the real application in memory, against a SQLite database that lives
++/// only for the lifetime of the test run.
++///
++/// The point of an integration test is that everything below the entry point is
++/// real: real routing, real filters, real services, real Entity Framework. The
++/// only thing replaced here is where the data lands, because a test that writes
++/// to rpn.db would leave rows behind for the next one.
++/// </summary>
++public class WebAppFixture : WebApplicationFactory<Program>
++{
++    private DbConnection? _connection;
++
++    protected override void ConfigureWebHost(IWebHostBuilder builder)
++    {
++        // Development, so the two seeded accounts exist here as well.
++        builder.UseEnvironment("Development");
++
++        builder.ConfigureServices(services =>
++        {
++            // An in-memory SQLite database stays alive exactly as long as the
++            // connection does, so the fixture holds one open for the run.
++            var registration = services.SingleOrDefault(
++                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
++            if (registration is not null) services.Remove(registration);
++
++            _connection = new SqliteConnection("DataSource=:memory:");
++            _connection.Open();
++
++            services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
++        });
++    }
++
++    protected override void Dispose(bool disposing)
++    {
++        base.Dispose(disposing);
++        if (disposing) _connection?.Dispose();
++    }
++}
+diff --git a/tests/Rpn.UiTests/AppPageTest.cs b/tests/Rpn.UiTests/AppPageTest.cs
+new file mode 100644
+index 0000000..063e2fc
+--- /dev/null
++++ b/tests/Rpn.UiTests/AppPageTest.cs
+@@ -0,0 +1,49 @@
++using Microsoft.Playwright.MSTest;
++
++namespace Rpn.UiTests;
++
++/// <summary>
++/// Base class for tests that drive the application in a real browser.
++///
++/// These tests do not start the application. Run it first:
++///
++///     dotnet run --project src/Rpn.Web
++///
++/// and leave it running. Point the tests somewhere else by setting RPN_BASE_URL.
++///
++/// A UI test is the slowest and most brittle thing in the pyramid, so there
++/// should be few of them, and each one should earn its place by covering
++/// something no cheaper test can reach.
++/// </summary>
++public abstract class AppPageTest : PageTest
++{
++    protected static string BaseUrl =>
++        Environment.GetEnvironmentVariable("RPN_BASE_URL") ?? "http://localhost:5080";
++
++    protected static string Url(string path) => $"{BaseUrl}{path}";
++
++    /// <summary>
++    /// Signs in through the real login form, as a real person would.
++    /// The two accounts are seeded in development: alice@example.com and
++    /// bob@example.com, both with the password below.
++    /// </summary>
++    protected async Task SignInAsync(string email, string password = "Workshop123!")
++    {
++        await Page.GotoAsync(Url("/Identity/Account/Login"));
++        await Page.FillAsync("input[name='Input.Email']", email);
++        await Page.FillAsync("input[name='Input.Password']", password);
++        await Page.ClickAsync("button[type='submit']");
++        await Page.WaitForURLAsync(u => !u.Contains("/Identity/Account/Login"));
++    }
++
++    protected async Task SignOutAsync()
++    {
++        await Page.GotoAsync(Url("/"));
++        var logout = Page.Locator("button:has-text('Logout'), a:has-text('Logout')").First;
++        if (await logout.CountAsync() > 0)
++        {
++            await logout.ClickAsync();
++        }
++        await Page.Context.ClearCookiesAsync();
++    }
++}
+diff --git a/tests/Rpn.UiTests/Rpn.UiTests.csproj b/tests/Rpn.UiTests/Rpn.UiTests.csproj
+new file mode 100644
+index 0000000..adfa4fa
+--- /dev/null
++++ b/tests/Rpn.UiTests/Rpn.UiTests.csproj
+@@ -0,0 +1,20 @@
++<Project Sdk="Microsoft.NET.Sdk">
++
++  <PropertyGroup>
++    <TargetFramework>net9.0</TargetFramework>
++    <ImplicitUsings>enable</ImplicitUsings>
++    <Nullable>enable</Nullable>
++    <IsPackable>false</IsPackable>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
++    <!-- Playwright ships test base classes for MSTest and NUnit only. The rest
++         of this solution is xUnit; this one project is MSTest so the browser
++         and page lifecycle is handled for us rather than by hand. -->
++    <PackageReference Include="Microsoft.Playwright.MSTest" Version="1.49.0" />
++    <PackageReference Include="MSTest.TestAdapter" Version="3.6.1" />
++    <PackageReference Include="MSTest.TestFramework" Version="3.6.1" />
++  </ItemGroup>
++
++</Project>
+diff --git a/tests/Rpn.UiTests/SmokeTests.cs b/tests/Rpn.UiTests/SmokeTests.cs
+new file mode 100644
+index 0000000..1381bd1
+--- /dev/null
++++ b/tests/Rpn.UiTests/SmokeTests.cs
+@@ -0,0 +1,33 @@
++using Microsoft.Playwright;
++using Microsoft.VisualStudio.TestTools.UnitTesting;
++
++namespace Rpn.UiTests;
++
++/// <summary>
++/// One test, so the project is green before the lab starts. If this fails, the
++/// application is not running or the browsers are not installed — either way
++/// it is a setup problem, not a lab problem.
++/// </summary>
++[TestClass]
++public class SmokeTests : AppPageTest
++{
++    [TestMethod]
++    public async Task The_application_is_running()
++    {
++        await Page.GotoAsync(BaseUrl);
++
++        await Expect(Page).ToHaveTitleAsync(new System.Text.RegularExpressions.Regex(".+"));
++    }
++
++    [TestMethod]
++    public async Task A_signed_in_user_can_evaluate_an_expression()
++    {
++        await SignInAsync("alice@example.com");
++
++        await Page.GotoAsync(Url("/Calculator"));
++        await Page.FillAsync("input[name='Expression']", "3 4 +");
++        await Page.ClickAsync("button[type='submit']");
++
++        await Expect(Page.Locator("p.result")).ToContainTextAsync("7");
++    }
++}
+-- 
+2.34.1
+
+
+From cc07fdb6b3db213bd5300441b8564d4162a66286 Mon Sep 17 00:00:00 2001
+From: Agilemania Course <naveen@agilemania.com>
+Date: Thu, 24 Sep 2026 06:01:40 +0000
+Subject: [PATCH 2/2] Add the missing using Xunit; directive
+
+CS0246 on every xunit attribute. ImplicitUsings does not cover Xunit, and the
+existing test project declares it explicitly.
+---
+ tests/Rpn.IntegrationTests/CalculatorPageTests.cs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tests/Rpn.IntegrationTests/CalculatorPageTests.cs b/tests/Rpn.IntegrationTests/CalculatorPageTests.cs
+index 22d01ba..2af5a89 100644
+--- a/tests/Rpn.IntegrationTests/CalculatorPageTests.cs
++++ b/tests/Rpn.IntegrationTests/CalculatorPageTests.cs
+@@ -1,4 +1,5 @@
+ using System.Net;
++using Xunit;
+ 
+ namespace Rpn.IntegrationTests;
+ 
+-- 
+2.34.1
+
