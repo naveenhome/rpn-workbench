@@ -25,9 +25,7 @@ public class HistoryPrivacyTests : AppPageTest
     {
         // ── Alice evaluates something only she should be able to see
         await SignInAsync("alice@example.com");
-        await Page.GotoAsync(Url("/Calculator"));
-        await Page.FillAsync("input[name='Expression']", "11 7 *");
-        await Page.ClickAsync("button[type='submit']");
+        await EvaluateAsync("11 7 *");
         await Expect(Page.Locator("p.result")).ToContainTextAsync("77");
 
         // The history list links each row to its own id.
