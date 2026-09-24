@@ -12,56 +12,70 @@ namespace Rpn.UiTests;
 ///
 /// and leave it running. Point the tests elsewhere with RPN_BASE_URL.
 ///
-/// A UI test is the slowest and most brittle thing in the pyramid, so there
-/// should be few of them, and each should cover something no cheaper test can
-/// reach. The same brittleness is why a failing one writes down what it saw:
-/// "element not found" tells you nothing on its own.
+/// One rule holds this file together: never click a bare button[type='submit'].
+/// Every page here carries the layout's sign-out form, which contains a submit
+/// button of its own and appears first in the document. A selector that matches
+/// two things does not fail — it picks one, and the test then reports something
+/// unrelated several lines later. Scope every click to the form that owns it.
 /// </summary>
 public abstract class AppPageTest : PageTest
 {
-    public TestContext TestContext { get; set; } = null!;
+    // No TestContext property is declared here. PageTest already inherits one
+    // from WorkerAwareTest, and re-declaring it means MSTest injects into this
+    // copy while Playwright's own teardown reads the base one, which is then
+    // null — a NullReferenceException in BrowserTearDown on every test.
 
     protected static string BaseUrl =>
         Environment.GetEnvironmentVariable("RPN_BASE_URL") ?? "http://localhost:5080";
 
     protected static string Url(string path) => $"{BaseUrl}{path}";
 
+    /// <summary>The calculator's own form, not the layout's sign-out form.</summary>
+    protected ILocator CalculatorForm => Page.Locator("form:has(#Expression)");
+
     /// <summary>
-    /// Signs in through the real login form, as a person would. The two
-    /// accounts are seeded in development: alice@example.com and
-    /// bob@example.com, both with the password below.
+    /// Signs in through the real login form. Both accounts are seeded in
+    /// development: alice@example.com and bob@example.com.
     /// </summary>
     protected async Task SignInAsync(string email, string password = "Workshop123!")
     {
         await Page.GotoAsync(Url("/Identity/Account/Login"));
-        await Page.FillAsync("input[name='Input.Email']", email);
-        await Page.FillAsync("input[name='Input.Password']", password);
-        await Page.ClickAsync("button[type='submit']");
+
+        var form = Page.Locator("form:has(input[name='Input.Email'])");
+        await form.Locator("input[name='Input.Email']").FillAsync(email);
+        await form.Locator("input[name='Input.Password']").FillAsync(password);
+        await form.Locator("button[type='submit']").ClickAsync();
+
         await Page.WaitForURLAsync(u => !u.Contains("/Identity/Account/Login"),
             new() { Timeout = 10_000 });
 
-        // Fail here, with a reason, rather than three lines later with
-        // "element not found" on a page that is actually the login form.
-        var signedIn = await Page.Locator("form[action*='Logout'], a[href*='Logout']").CountAsync();
-        if (signedIn == 0)
+        if (await Page.Locator("form[action*='Logout']").CountAsync() == 0)
         {
             await DumpAsync("signin-failed");
-            Assert.Fail($"Signed in as {email} but found no sign-out control. "
-                        + $"Landed on {Page.Url}. Is the account seeded? "
-                        + "Seeding only runs when ASPNETCORE_ENVIRONMENT is Development.");
+            Assert.Fail($"Signed in as {email} but the page has no sign-out form. "
+                        + $"Landed on {Page.Url}. Is the account seeded? Seeding only "
+                        + "runs when ASPNETCORE_ENVIRONMENT is Development.");
         }
     }
 
     protected async Task SignOutAsync()
     {
         await Page.GotoAsync(Url("/"));
-        var logout = Page.Locator("button:has-text('Logout'), a:has-text('Logout')").First;
+        var logout = Page.Locator("form[action*='Logout'] button[type='submit']");
         if (await logout.CountAsync() > 0) await logout.ClickAsync();
         await Page.Context.ClearCookiesAsync();
     }
 
+    /// <summary>Evaluates an expression through the calculator page.</summary>
+    protected async Task EvaluateAsync(string expression)
+    {
+        await Page.GotoAsync(Url("/Calculator"));
+        await CalculatorForm.Locator("#Expression").FillAsync(expression);
+        await CalculatorForm.Locator("button[type='submit']").ClickAsync();
+    }
+
     /// <summary>
-    /// Writes a screenshot and the page's HTML beside the test binaries, so a
+    /// Writes a screenshot and the page HTML beside the test binaries, so a
     /// failure can be read after the browser has gone.
     /// </summary>
     protected async Task DumpAsync(string label)
@@ -77,7 +91,6 @@ public abstract class AppPageTest : PageTest
         TestContext.WriteLine($"shot : {stem}.png");
         TestContext.WriteLine($"html : {stem}.html");
 
-        // The two elements that explain most failures on this application.
         foreach (var sel in new[] { "p.error", "p.result", "div.validation-summary-errors", "h1" })
         {
             var loc = Page.Locator(sel);

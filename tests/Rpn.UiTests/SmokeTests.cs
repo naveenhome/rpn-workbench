@@ -1,12 +1,11 @@
-using Microsoft.Playwright;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Rpn.UiTests;
 
 /// <summary>
-/// One test, so the project is green before the lab starts. If this fails, the
-/// application is not running or the browsers are not installed — either way
-/// it is a setup problem, not a lab problem.
+/// Two tests, so the project is green before the lab starts. If these fail the
+/// application is not running, the browsers are missing, or the accounts were
+/// not seeded — a setup problem rather than a lab problem.
 /// </summary>
 [TestClass]
 public class SmokeTests : AppPageTest
@@ -16,7 +15,7 @@ public class SmokeTests : AppPageTest
     {
         await Page.GotoAsync(BaseUrl);
 
-        await Expect(Page).ToHaveTitleAsync(new System.Text.RegularExpressions.Regex(".+"));
+        await Expect(Page.Locator("h1")).ToBeVisibleAsync();
     }
 
     [TestMethod]
@@ -24,9 +23,7 @@ public class SmokeTests : AppPageTest
     {
         await SignInAsync("alice@example.com");
 
-        await Page.GotoAsync(Url("/Calculator"));
-        await Page.FillAsync("input[name='Expression']", "3 4 +");
-        await Page.ClickAsync("button[type='submit']");
+        await EvaluateAsync("3 4 +");
 
         await Expect(Page.Locator("p.result")).ToContainTextAsync("7");
     }
