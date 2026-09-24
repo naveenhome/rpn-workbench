@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Browser configuration for the UI tests.
+
+  Channel "chrome" drives the Google Chrome already installed on the machine
+  rather than Playwright's own pinned Chromium build. That matters here for one
+  practical reason: twenty delegates downloading a few hundred megabytes of
+  browser over venue wifi, at the same time, is the single most reliable way to
+  lose a morning.
+
+  Anybody without Chrome can install Playwright's own build instead:
+
+      dotnet run  (see tools/playwright-install)
+
+  and then delete the Channel line below.
+-->
+<RunSettings>
+  <Playwright>
+    <BrowserName>chromium</BrowserName>
+    <ExpectTimeout>8000</ExpectTimeout>
+    <LaunchOptions>
+      <Headless>true</Headless>
+      <Channel>chrome</Channel>
+    </LaunchOptions>
+  </Playwright>
+</RunSettings>
