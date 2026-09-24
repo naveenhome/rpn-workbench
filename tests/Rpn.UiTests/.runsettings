@@ -10,7 +10,7 @@
 
   Anybody without Chrome can install Playwright's own build instead:
 
-      dotnet run --project tools/playwright-install -- chromium
+      dotnet run  (see tools/playwright-install)
 
   and then delete the Channel line below.
 -->

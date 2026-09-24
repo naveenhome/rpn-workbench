@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <!-- So "dotnet test" picks the browser settings up without
-         anybody having to remember --settings. -->
+         anybody having to pass a settings flag. -->
     <RunSettingsFilePath>$(MSBuildProjectDirectory)\.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
