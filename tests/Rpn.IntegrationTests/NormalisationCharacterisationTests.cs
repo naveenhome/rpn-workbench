@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Rpn.Web.Services;
+using Xunit;
 
 namespace Rpn.IntegrationTests;
 
