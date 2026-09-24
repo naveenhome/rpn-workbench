@@ -10,3 +10,4 @@ obj/
 
 # Generated review diffs — regenerate with git format-patch
 *.patch
+*.diff
