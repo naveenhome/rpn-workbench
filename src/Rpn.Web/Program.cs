@@ -31,6 +31,27 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     context.Database.EnsureCreated();
+
+    // Two known accounts, in development only, so the history views have more
+    // than one owner to look at. A course exercise that needs two signed-in
+    // users should not begin with ten pairs registering twenty accounts by
+    // hand through the Identity UI.
+    if (app.Environment.IsDevelopment())
+    {
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        foreach (var email in new[] { "alice@example.com", "bob@example.com" })
+        {
+            if (await users.FindByEmailAsync(email) is not null) continue;
+            var user = new IdentityUser { UserName = email, Email = email, EmailConfirmed = true };
+            var result = await users.CreateAsync(user, "Workshop123!");
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"could not seed {email}: "
+                    + string.Join("; ", result.Errors.Select(e => e.Description)));
+            }
+        }
+    }
 }
 
 if (!app.Environment.IsDevelopment())
@@ -51,3 +72,10 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
+
+/// <summary>
+/// Exposed so the integration tests can host this application in memory.
+/// Top-level statements compile to an internal Program, which
+/// WebApplicationFactory&lt;Program&gt; cannot reach.
+/// </summary>
+public partial class Program { }
