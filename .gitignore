@@ -11,3 +11,8 @@ obj/
 # Generated review diffs — regenerate with git format-patch
 *.patch
 *.diff
+
+# The server configuration is a deliverable, not a personal editor setting.
+# An uncommitted mcp.json is the personal-instructions problem again: it works
+# on one machine and nobody else's Copilot can see the server.
+!.vscode/mcp.json

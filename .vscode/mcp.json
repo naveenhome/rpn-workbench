@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "rpn": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["run", "--project", "tools/RpnMcp"]
+    }
+  }
+}
