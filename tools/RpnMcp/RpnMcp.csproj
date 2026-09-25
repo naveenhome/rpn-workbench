@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned. A major release with a different attribute surface must not
+         break this lab in the middle of a delivery. -->
+    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The evaluator already exists. Reimplementing it here would teach the
+         wrong lesson about what a tool is for. -->
+    <ProjectReference Include="..\..\src\Rpn.Core\Rpn.Core.csproj" />
+  </ItemGroup>
+
+</Project>
